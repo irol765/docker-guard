@@ -34,7 +34,7 @@ else
     fi
 fi
 
-# 3. 准备环境 & 白名单交互逻辑 (修复管道模式下的输入问题)
+# 3. 准备环境 & 白名单交互逻辑
 echo "📂 准备数据目录: $DATA_DIR"
 mkdir -p "$DATA_DIR"
 
@@ -46,11 +46,10 @@ if [ -f "$WHITELIST_FILE" ] && [ -s "$WHITELIST_FILE" ]; then
     echo "--------------------------------------------------"
     echo "💡 提示：保留白名单将沿用上述配置；删除白名单将触发'自动学习'重新扫描。"
     
-    # 关键修改点：加上 < /dev/tty 强制从终端读取输入
+    # 强制从终端读取输入
     if [ -t 0 ] || [ -c /dev/tty ]; then
         read -p "❓ 是否保留现有白名单？ [Y/n] (默认: Y): " choice < /dev/tty
     else
-        # 如果不是在交互式终端运行（比如自动化运维脚本），默认保留
         echo "⚠️ 非交互环境，自动保留白名单。"
         choice="Y"
     fi
@@ -67,13 +66,18 @@ if [ -f "$WHITELIST_FILE" ] && [ -s "$WHITELIST_FILE" ]; then
     echo ""
 fi
 
-# 4. 清理旧容器
+# 4. [新增] 强制拉取最新镜像
+echo "⬇️  正在拉取最新镜像..."
+docker pull "$IMAGE_NAME"
+echo ""
+
+# 5. 清理旧容器
 if docker ps -a --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
     echo "🧹 删除旧容器..."
     docker rm -f "$CONTAINER_NAME" > /dev/null
 fi
 
-# 5. 启动容器
+# 6. 启动容器
 echo "🚀 正在启动 Docker Guard..."
 docker run -d \
   --name "$CONTAINER_NAME" \
@@ -83,15 +87,21 @@ docker run -d \
   -v "$DATA_DIR":/data \
   "$IMAGE_NAME"
 
-# 6. 验证状态
-sleep 2
+# 7. [优化] 验证状态并展示日志
+echo "⏳ 等待容器启动..."
+sleep 3
+
 if [ "$(docker ps -q -f name=$CONTAINER_NAME)" ]; then
     echo "================================================"
     echo "🎉 安装成功！Docker Guard 正在运行。"
     echo "📝 白名单路径: $WHITELIST_FILE"
-    echo "👀 查看日志: docker logs -f $CONTAINER_NAME"
+    echo ""
+    echo "📜 容器启动日志 (最新 10 行):"
+    echo "------------------------------------------------"
+    docker logs --tail 10 "$CONTAINER_NAME"
+    echo "------------------------------------------------"
     echo "================================================"
 else
-    echo "❌ 启动失败，请检查日志："
+    echo "❌ 启动失败，容器已退出。请检查完整日志："
     docker logs "$CONTAINER_NAME"
 fi
