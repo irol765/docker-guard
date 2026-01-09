@@ -13,26 +13,31 @@
 
 ## **🚀 一键部署 (Quick Start)**
 
-直接复制以下命令在服务器上运行即可。  
+🚀 极速部署 (推荐)
+
+我们提供了一个万能安装脚本，自动处理目录创建、旧容器清理和 API 版本检测。
+
+```bash
+# 下载并运行安装脚本
+curl -sSL https://raw.githubusercontent.com/irol765/docker-guard/main/scripts/install.sh | bash
+```
+
+
+如需手动部署直接复制以下命令在服务器上运行即可。  
 (注意：Docker 会自动创建 /root/docker-guard 目录用于存放白名单，无需手动新建)  
 
-Docker版本 26.0+
-
+先查看API版本
 ```bash
-docker run -d \
-  --name docker-guard \
-  --restart unless-stopped \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v /root/docker-guard:/data \
-  irol765/docker-guard:latest
+# 查看 API 版本命令
+docker version -f '{{.Server.APIVersion}}'
 ```
-Docker版本 <26.0
+替换API版本
 
 ```bash
 docker run -d \
   --name docker-guard \
   --restart unless-stopped \
-  -e DOCKER_API_VERSION=1.40 \
+  -e DOCKER_API_VERSION=替换API版本 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v /root/docker-guard:/data \
   irol765/docker-guard:latest
@@ -41,7 +46,7 @@ docker run -d \
 ⚠️ 警告：请勿手动创建白名单文件！
 请让容器首次运行自动生成 whitelist.txt。如果在容器启动前手动创建了该文件，会导致**“自动学习”功能失效**，从而误杀其他正常容器。
 
-如果无法正常使用请先运行以下代码，清除whitelist.txt，再启动容器。
+如果无法正常使用请先运行以下代码，清除whitelist.txt和老容器，再启动容器。
 
 ```bash
 docker rm -f docker-guard
@@ -68,7 +73,7 @@ cat /root/docker-guard/whitelist.txt
 ```bash
 vi /root/docker-guard/whitelist.txt  
 ```
-2. 在末尾添加一行：redis  
+2. 在末尾添加一行：如redis  
 3. 保存退出 (:wq)。  
 4. **即时生效**，无需重启看门狗。
 
