@@ -1,0 +1,73 @@
+name: Docker Build & Push
+
+on:
+  push:
+    branches: [ "main" ]
+    # 当打 tag (如 v1.0) 时也触发
+    tags: [ 'v*.*.*' ]
+    # 当 README 改动时也触发
+    paths:
+      - 'README.md'
+  workflow_dispatch: # 允许手动触发
+
+env:
+  # 你的 Docker Hub 仓库名
+  IMAGE_NAME: irol765/docker-guard
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 1. 配置 QEMU (用于支持 ARM64 构建)
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      # 2. 配置 Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. 登录 Docker Hub
+      - name: Log into Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 4. 提取元数据 (自动处理 tags)
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+            type=semver,pattern={{version}}
+
+      # 5. 构建并推送 (双架构: amd64 + arm64)
+      - name: Build and push Docker image
+        # 只有当非 README 变动时才构建镜像，节省资源
+        if: github.event_name != 'push' || !contains(github.event.head_commit.message, 'docs')
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          # 在这里指定多架构
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      # 6. 【新增】自动同步 README 到 Docker Hub
+      - name: Update Docker Hub Description
+        uses: peter-evans/dockerhub-description@v4
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          repository: ${{ env.IMAGE_NAME }}
+          readme-filepath: ./README.md
