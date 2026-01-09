@@ -5,9 +5,6 @@ on:
     branches: [ "main" ]
     # 当打 tag (如 v1.0) 时也触发
     tags: [ 'v*.*.*' ]
-    # 当 README 改动时也触发
-    paths:
-      - 'README.md'
   workflow_dispatch: # 允许手动触发
 
 env:
