@@ -25,6 +25,27 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # === 🔍 新增调试步骤 (开始) ===
+      - name: Debug Secrets
+        run: |
+          echo "正在检查 Secrets..."
+          if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
+            echo "❌ 错误: DOCKERHUB_USERNAME 是空的！请检查拼写 (结尾有没有E?) 或位置 (Repository secrets?)"
+            exit 1
+          else
+            echo "✅ DOCKERHUB_USERNAME 读取成功 (长度: ${#DOCKERHUB_USERNAME})"
+          fi
+          
+          if [ -z "${{ secrets.DOCKERHUB_TOKEN }}" ]; then
+            echo "❌ 错误: DOCKERHUB_TOKEN 是空的！"
+            exit 1
+          else
+            echo "✅ DOCKERHUB_TOKEN 读取成功"
+          fi
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+      # === 🔍 新增调试步骤 (结束) ===
+
       # 1. 配置 QEMU (用于支持 ARM64 构建)
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
