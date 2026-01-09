@@ -98,4 +98,5 @@ docker logs \--tail 50 \-f docker-guard
 * **挂载路径**：建议将数据卷挂载到 /root/docker-guard 或其他持久化目录，确保白名单文件不会丢失。  
 * **首次运行**：请确保在服务器干净（没有病毒）的状态下首次运行，因为它会默认信任当前所有的镜像。
 
+
 *Maintained by irol765*
