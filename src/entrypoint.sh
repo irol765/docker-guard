@@ -8,7 +8,6 @@ check_and_kill() {
     local image_name=$2
 
     # [优化] 提取纯镜像名 (智能移除 Tag，保留私有仓库端口)
-    # 逻辑：只移除行尾的 :tag，而不移除 localhost:5000 中的冒号
     local clean_image_name=$(echo "$image_name" | sed 's/:[^/]*$//')
 
     # 检查是否在白名单中
@@ -17,7 +16,7 @@ check_and_kill() {
     else
         echo "🚨 [实时拦截] 发现非法入侵: $image_name (ID: $container_id)"
         
-        # 1. 毫秒级处决 (先暂停再删除，防止它继续运行代码)
+        # 1. 毫秒级处决
         docker stop "$container_id" > /dev/null 2>&1
         docker rm -f "$container_id" > /dev/null 2>&1
         
@@ -41,7 +40,7 @@ if [ ! -f "$WHITELIST_FILE" ] || [ ! -s "$WHITELIST_FILE" ]; then
     
     docker images --format "{{.Repository}}" | grep -v "<none>" | sort | uniq > "$WHITELIST_FILE"
     
-    # 将常见的基础镜像和自己加入白名单防止自杀
+    # 基础防自杀名单
     echo "docker:cli" >> "$WHITELIST_FILE"
     echo "irol765/docker-guard" >> "$WHITELIST_FILE"
     
@@ -64,9 +63,8 @@ done
 
 echo "⚡ Docker Guard 进入实时防御模式 (Event Driven)..."
 
-# 监听 'start' 事件：只要有容器启动，立刻触发
-# 使用 {{.Actor.Attributes.image}} 获取标准的镜像名 (API 1.22+)
-docker events --filter 'type=container' --filter 'event=start' --format '{{.ID}} {{.Actor.Attributes.image}}' | while read -r container_id image_name; do
-    # 只要收到信号，立刻执行检查
+# [修复点] 将 {{.ID}} 修改为 {{.Actor.ID}} 以兼容所有 Docker 版本
+# 同时保持 {{.Actor.Attributes.image}} 获取镜像名
+docker events --filter 'type=container' --filter 'event=start' --format '{{.Actor.ID}} {{.Actor.Attributes.image}}' | while read -r container_id image_name; do
     check_and_kill "$container_id" "$image_name"
 done
