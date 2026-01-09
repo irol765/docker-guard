@@ -1,3 +1,5 @@
+#!/bin/bash
+
 # 定义镜像名称
 IMAGE_NAME="irol765/docker-guard:latest"
 CONTAINER_NAME="docker-guard"
@@ -32,7 +34,7 @@ else
     fi
 fi
 
-# 3. 准备环境 & 白名单交互逻辑 (新增优化)
+# 3. 准备环境 & 白名单交互逻辑 (修复管道模式下的输入问题)
 echo "📂 准备数据目录: $DATA_DIR"
 mkdir -p "$DATA_DIR"
 
@@ -43,7 +45,16 @@ if [ -f "$WHITELIST_FILE" ] && [ -s "$WHITELIST_FILE" ]; then
     cat "$WHITELIST_FILE"
     echo "--------------------------------------------------"
     echo "💡 提示：保留白名单将沿用上述配置；删除白名单将触发'自动学习'重新扫描。"
-    read -p "❓ 是否保留现有白名单？ [Y/n] (默认: Y): " choice
+    
+    # 关键修改点：加上 < /dev/tty 强制从终端读取输入
+    if [ -t 0 ] || [ -c /dev/tty ]; then
+        read -p "❓ 是否保留现有白名单？ [Y/n] (默认: Y): " choice < /dev/tty
+    else
+        # 如果不是在交互式终端运行（比如自动化运维脚本），默认保留
+        echo "⚠️ 非交互环境，自动保留白名单。"
+        choice="Y"
+    fi
+
     case "$choice" in 
         n|N ) 
             echo "🗑️  已删除旧白名单。Docker Guard 将在启动时重新扫描当前环境。"
